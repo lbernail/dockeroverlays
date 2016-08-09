@@ -1,0 +1,6 @@
+export bridge_gatway_cidr='10.200.0.1/24'
+export container1_ip_cidr='10.200.0.3/24'
+export container1_mac_addr='02:42:0a:00:00:03'
+export container2_ip='10.200.0.2'
+export container2_mac_addr='02:42:0a:00:00:02'
+export container2_host_ip='10.200.129.76'

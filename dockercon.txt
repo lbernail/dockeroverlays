@@ -1,0 +1,102 @@
+# Network creation
+docker0: docker network create --driver overlay --subnet 192.168.0.0/24 dockercon
+docker1: docker network ls
+
+# Connectivity
+docker0: docker run -d --ip 192.168.0.100 --net dockercon --name C0 debian sleep 3600
+docker1: docker run --net dockercon debian ping 192.168.0.100
+docker1: ping 192.168.0.100
+
+# Contaienr network config
+docker0
+docker exec C0 ip addr show
+docker exec C0 ip -details link show dev eth0
+docker exec C0 ip route show
+
+# Where do ethX go?
+sudo ln -s /var/run/docker/netns /var/run/netns
+sudo ip netns list
+docker inspect C0 -f {{.NetworkSettings.SandboxKey}}
+sandbox=$(docker inspect C0 -f {{.NetworkSettings.SandboxKey}})
+C0netns=${sandbox##*/}
+sudo ip netns exec $C0netns ip addr show
+sudo ip netns exec $C0netns ethtool -S eth0
+
+# eth1
+ip -details link show
+
+# eth0
+sudo ip netns ls
+docker network inspect dockercon -f {{.Id}}
+overns=8-c4305b67cd
+sudo ip netns exec $overns ip -d link show
+
+
+# VXLAN traffic
+sudo tcpdump -nn -i eth0 "port 4789"
+
+
+# L2 and L3 tables
+sudo ip netns exec $overns ip neighbor show
+sudo ip netns exec $overns bridge fdb show br br0
+
+docker1: docker run -d --ip 192.168.0.200 --net dockercon --name C1 debian sleep 3600
+docker0:
+sudo ip netns exec $overns ip neighbor show
+sudo ip netns exec $overns bridge fdb show br br0
+
+
+# Consul
+docker network inspect dockercon -f {{.Id}}
+net=c4305b67cda46c2ed96ef797e37aed14501944a1fe0096dacd1ddd8e05341381
+
+curl -s http://localhost:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
+
+docker inspect C0 -f {{.NetworkSettings.Networks.dockercon.EndpointID}}
+epid=9a4ae9b1ce2c1ef3388ed37428bfd1e7d546c7fbb4e639e71c102ca8be6b8e6b
+curl -s http://localhost:8500/v1/kv/docker/network/v1.0/endpoint/$net/$epid/ | jq -r ".[0].Value" | base64 -d | jq .
+
+
+#### From scratch
+# Clean up
+docker0: docker rm $(docker ps -aq)
+docker0: docker network rm dockercon
+docker1: docker rm $(docker ps -aq)
+
+# Create containers
+docker0: docker run -d --net=none --name=demo debian sleep 3600
+docker1: docker run -d --net=none --name=demo debian sleep 3600
+
+docker0: docker exec C0 ip link show
+
+# Create Overlay namespace
+./create-overlay.sh
+
+# Move interfaces to containers
+docker0: ./attach-ctn.sh demo 2
+docker1: ./attach-ctn.sh demo 3
+
+# Ping?
+docker0
+docker exec -it demo ping 192.168.0.3
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+sudo ip netns exec overns ip neighbor add 192.168.0.3 lladdr 02:42:c0:a8:00:03 dev vxlan1 nud permanent
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:03 dev vxlan1 self dst 10.200.129.98 vni 42 port 4789
+
+docker1
+sudo ip netns exec overns ip neighbor add 192.168.0.2 lladdr 02:42:c0:a8:00:02 dev vxlan1 nud permanent
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:02 dev vxlan1 self dst 10.200.128.130 vni 42 port 4789
+
+
+# Clean up
+docker0
+sudo ip netns delete overns
+# recreate overlay NS and attach container to overlay bridge
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+
+docker exec -it demo ping 192.168.0.3
+
+
+

@@ -1,3 +1,4 @@
+sudo ip netns delete overns 2> /dev/null && "Deleting existing overlay"
 sudo ip netns add overns
 sudo ip netns exec overns ip link add dev br0 type bridge
 sudo ip netns exec overns ip addr add dev br0 192.168.0.1/24

@@ -11,10 +11,6 @@ sudo ip link add dev vxlan1 type vxlan id 42 proxy learning $options dstport 478
 sudo ip link set vxlan1 netns overns
 sudo ip netns exec overns ip link set vxlan1 master br0
 
-sudo ip link add dev veth1 mtu 1450 type veth peer name veth2 mtu 1450
-sudo ip link set dev veth1 netns overns
-sudo ip netns exec overns ip link set veth1 master br0
 
 sudo ip netns exec overns ip link set vxlan1 up
-sudo ip netns exec overns ip link set veth1 up
 sudo ip netns exec overns ip link set br0 up

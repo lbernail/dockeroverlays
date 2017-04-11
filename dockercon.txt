@@ -81,22 +81,56 @@ docker0
 docker exec -it demo ping 192.168.0.3
 sudo ip netns exec overns ip neighbor show
 sudo ip netns exec overns bridge fdb show
-sudo ip netns exec overns ip neighbor add 192.168.0.3 lladdr 02:42:c0:a8:00:03 dev vxlan1 nud permanent
-sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:03 dev vxlan1 self dst 10.200.129.98 vni 42 port 4789
+./populate-arp-fdb.sh 3 10.200.129.98
 
 docker1
-sudo ip netns exec overns ip neighbor add 192.168.0.2 lladdr 02:42:c0:a8:00:02 dev vxlan1 nud permanent
-sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:02 dev vxlan1 self dst 10.200.128.130 vni 42 port 4789
+./populate-arp-fdb.sh 2 10.200.128.130
 
-
-# Clean up
 docker0
-sudo ip netns delete overns
-# recreate overlay NS and attach container to overlay bridge
-sudo ip netns exec overns ip neighbor show
-sudo ip netns exec overns bridge fdb show
-
 docker exec -it demo ping 192.168.0.3
 
 
+##### Dynamic #####
 
+## Clean up
+docker0
+./create-overlay.sh 
+./attach-ctn.sh demo 2
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+
+## Netlink messages
+docker0-1: python/watch.py
+
+docker0-2: sudo ip link add dev test1  type veth peer name test2
+
+## Catching L2/L3 miss
+docker0-1: sudo ip netns exec overns ./l2l3miss.py
+docker0-2: docker exec -it demo ping 192.168.0.3
+
+docker0-2: ./create-overlay.sh "l2miss l3miss"
+docker0-2: ./attach-ctn.sh demo 2
+docker0-1: sudo ip netns exec overns ./l2l3miss.py
+docker0-2: docker exec -it demo ping 192.168.0.3
+
+docker0-2: ./populate-arp.sh 3
+docker0-2: docker exec -it demo ping 192.168.0.3
+
+docker0-2: ./populate-arp-fdb.sh 3 10.200.129.98
+docker0-2: docker exec -it demo ping 192.168.0.3
+
+## Using Consul to store Hosts, Mac address
+docker0-2: ./create-overlay.sh "l2miss l3miss"
+docker0-2: ./attach-ctn.sh demo 2
+
+local:
+curl -X PUT -d '02:42:c0:a8:00:02' http://localhost:8500/v1/kv/demo/arp/192.168.0.2
+curl -X PUT -d '02:42:c0:a8:00:03' http://localhost:8500/v1/kv/demo/arp/192.168.0.3
+curl -X PUT -d '10.200.128.130' http://localhost:8500/v1/kv/demo/fib/02:42:c0:a8:00:02
+curl -X PUT -d '10.200.129.98' http://localhost:8500/v1/kv/demo/fib/02:42:c0:a8:00:03
+
+docker0-1: 
+sudo python/arpd-consul.py
+
+docker0-2:
+docker0-2: docker exec -it demo ping 192.168.0.3

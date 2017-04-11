@@ -2,6 +2,7 @@
 
 from pyroute2 import NetNS
 from pyroute2.netlink.rtnl import ndmsg
+from pyroute2.netlink.exceptions import NetlinkError
 
 import consul
 
@@ -48,7 +49,10 @@ while True:
       if answer is not None:
         mac_addr=answer["Value"]
         logging.info("Populating ARP table from Consul: IP {} is {}".format(ipaddr,mac_addr))
-        ipr.neigh('add', dst=ipaddr, lladdr=mac_addr, ifindex=ifindex, state=ndmsg.states['permanent'])
+        try:
+            ipr.neigh('add', dst=ipaddr, lladdr=mac_addr, ifindex=ifindex, state=ndmsg.states['permanent'])
+        except NetlinkError as (code,message):
+            print(message)
        
     if m.get_attr("NDA_LLADDR") is not None:
       lladdr=m.get_attr("NDA_LLADDR")
@@ -58,4 +62,7 @@ while True:
       if answer is not None:
         dst_host=answer["Value"]
         logging.info("Populating FIB table from Consul: MAC {} is on host {}".format(lladdr,dst_host))
-	ipr.fdb('add',ifindex=ifindex, lladdr=lladdr, dst=dst_host)
+        try:
+	   ipr.fdb('add',ifindex=ifindex, lladdr=lladdr, dst=dst_host)
+        except NetlinkError as (code,message):
+            print(message)

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 options=${1:-}
 
 sudo ip netns delete overns 2> /dev/null && echo "Deleting existing overlay"

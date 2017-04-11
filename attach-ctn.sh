@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ctn=${1:-demo}
 ip=${2:-2}
 

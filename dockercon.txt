@@ -4,17 +4,22 @@ docker1: docker network ls
 
 # Connectivity
 docker0: docker run -d --ip 192.168.0.100 --net dockercon --name C0 debian sleep 3600
-docker1: docker run --net dockercon debian ping 192.168.0.100
+docker1: docker run -it --rm --net dockercon debian 
+     > ping 192.168.0.100
 docker1: ping 192.168.0.100
 
-# Contaienr network config
+** back to slides **
+
+# Container network config
 docker0
 docker exec C0 ip addr show
 docker exec C0 ip -details link show dev eth0
 docker exec C0 ip route show
 
+** back to slides **
+
 # Where do ethX go?
-sudo ln -s /var/run/docker/netns /var/run/netns
+# sudo ln -s /var/run/docker/netns /var/run/netns
 sudo ip netns list
 docker inspect C0 -f {{.NetworkSettings.SandboxKey}}
 sandbox=$(docker inspect C0 -f {{.NetworkSettings.SandboxKey}})
@@ -24,6 +29,9 @@ sudo ip netns exec $C0netns ethtool -S eth0
 
 # eth1
 ip -details link show
+docker inspect docker_gwbridge
+
+** back to slides **
 
 # eth0
 sudo ip netns ls
@@ -31,10 +39,12 @@ docker network inspect dockercon -f {{.Id}}
 overns=8-c4305b67cd
 sudo ip netns exec $overns ip -d link show
 
+** back to slides **
 
 # VXLAN traffic
 sudo tcpdump -nn -i eth0 "port 4789"
 
+** back to slides **
 
 # L2 and L3 tables
 sudo ip netns exec $overns ip neighbor show
@@ -45,50 +55,58 @@ docker0:
 sudo ip netns exec $overns ip neighbor show
 sudo ip netns exec $overns bridge fdb show br br0
 
+** back to slides **
 
 # Consul
-docker network inspect dockercon -f {{.Id}}
-net=c4305b67cda46c2ed96ef797e37aed14501944a1fe0096dacd1ddd8e05341381
+net=$(docker network inspect dockercon -f {{.Id}})
+curl -s http://consul1:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
 
-curl -s http://localhost:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
+epid=$(docker inspect C0 -f {{.NetworkSettings.Networks.dockercon.EndpointID}})
+curl -s http://consul1:8500/v1/kv/docker/network/v1.0/endpoint/$net/$epid/ | jq -r ".[0].Value" | base64 -d | jq .
 
-docker inspect C0 -f {{.NetworkSettings.Networks.dockercon.EndpointID}}
-epid=9a4ae9b1ce2c1ef3388ed37428bfd1e7d546c7fbb4e639e71c102ca8be6b8e6b
-curl -s http://localhost:8500/v1/kv/docker/network/v1.0/endpoint/$net/$epid/ | jq -r ".[0].Value" | base64 -d | jq .
+python/dump_endpoints.py
 
+** back to slides **
 
 #### From scratch
 # Clean up
-docker0: docker rm $(docker ps -aq)
+docker0: docker rm -f $(docker ps -aq)
 docker0: docker network rm dockercon
-docker1: docker rm $(docker ps -aq)
+docker1: docker rm -f $(docker ps -aq)
 
+** back to slides **
+# Create Overlay namespace
+both: ./create-overlay.sh
+
+
+# Move interfaces to containers
 # Create containers
 docker0: docker run -d --net=none --name=demo debian sleep 3600
 docker1: docker run -d --net=none --name=demo debian sleep 3600
 
-docker0: docker exec C0 ip link show
+docker0: docker exec demo ip link show
 
-# Create Overlay namespace
-./create-overlay.sh
-
-# Move interfaces to containers
 docker0: ./attach-ctn.sh demo 2
 docker1: ./attach-ctn.sh demo 3
+
 
 # Ping?
 docker0
 docker exec -it demo ping 192.168.0.3
+
+** back to slides **
+
 sudo ip netns exec overns ip neighbor show
 sudo ip netns exec overns bridge fdb show
-./populate-arp-fdb.sh 3 10.200.129.98
+./populate-arp-fdb.sh 3 10.200.129.100
 
 docker1
-./populate-arp-fdb.sh 2 10.200.128.130
+./populate-arp-fdb.sh 2 10.200.128.100
 
 docker0
 docker exec -it demo ping 192.168.0.3
 
+** back to slides **
 
 ##### Dynamic #####
 
@@ -99,35 +117,40 @@ docker0
 sudo ip netns exec overns ip neighbor show
 sudo ip netns exec overns bridge fdb show
 
+** back to slides **
+
 ## Netlink messages
 docker0-1: python/watch.py
 
 docker0-2: sudo ip link add dev test1  type veth peer name test2
 
+** back to slides **
 ## Catching L2/L3 miss
-docker0-1: sudo ip netns exec overns ./l2l3miss.py
+docker0-1: sudo ip netns exec overns python/l2l3miss.py
 docker0-2: docker exec -it demo ping 192.168.0.3
 
 docker0-2: ./create-overlay.sh "l2miss l3miss"
 docker0-2: ./attach-ctn.sh demo 2
-docker0-1: sudo ip netns exec overns ./l2l3miss.py
+docker0-1: sudo ip netns exec overns python/l2l3miss.py
 docker0-2: docker exec -it demo ping 192.168.0.3
 
 docker0-2: ./populate-arp.sh 3
 docker0-2: docker exec -it demo ping 192.168.0.3
 
-docker0-2: ./populate-arp-fdb.sh 3 10.200.129.98
+docker0-2: ./populate-arp-fdb.sh 3 10.200.129.100
 docker0-2: docker exec -it demo ping 192.168.0.3
+
+** back to slides **
 
 ## Using Consul to store Hosts, Mac address
 docker0-2: ./create-overlay.sh "l2miss l3miss"
 docker0-2: ./attach-ctn.sh demo 2
 
-local:
-curl -X PUT -d '02:42:c0:a8:00:02' http://localhost:8500/v1/kv/demo/arp/192.168.0.2
-curl -X PUT -d '02:42:c0:a8:00:03' http://localhost:8500/v1/kv/demo/arp/192.168.0.3
-curl -X PUT -d '10.200.128.130' http://localhost:8500/v1/kv/demo/fib/02:42:c0:a8:00:02
-curl -X PUT -d '10.200.129.98' http://localhost:8500/v1/kv/demo/fib/02:42:c0:a8:00:03
+docker0:
+curl -X PUT -d '02:42:c0:a8:00:02' http://consul1:8500/v1/kv/demo/arp/192.168.0.2
+curl -X PUT -d '02:42:c0:a8:00:03' http://consul1:8500/v1/kv/demo/arp/192.168.0.3
+curl -X PUT -d '10.200.128.100' http://consul1:8500/v1/kv/demo/fib/02:42:c0:a8:00:02
+curl -X PUT -d '10.200.129.100' http://consul1:8500/v1/kv/demo/fib/02:42:c0:a8:00:03
 
 docker0-1: 
 sudo python/arpd-consul.py

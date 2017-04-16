@@ -8,8 +8,8 @@ import socket
 import struct
 import logging
 
-# These constants map to constants in the Linux kernel. This is a crappy
-# way to get at them, but it'll do for now.
+# These constants map to constants in the Linux kernel.
+# There is definitely a better way to get them
 RTMGRP_LINK = 1
 RTMGRP_NOTIFY = 2
 RTMGRP_NEIGH = 4

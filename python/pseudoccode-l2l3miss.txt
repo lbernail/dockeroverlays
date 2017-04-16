@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+# Create the netlink socket and bind to NEIGHBOR NOTIFICATION,
+s = socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, socket.NETLINK_ROUTE)
+s.bind((os.getpid(), RTMGRP_NEIGH))
+
+while True:
+    data = s.recv(65535)
+    msg_len, msg_type, flags, seq, pid = struct.unpack("=LHHLL", data[:16])
+
+    # We fundamentally only care about GETNEIGH messages
+    if msg_type != RTM_GETNEIGH:
+        continue
+
+    data=data[16:]
+    ndm_family, _, _, ndm_ifindex, ndm_state, ndm_flags, ndm_type = struct.unpack("=BBHiHBB", data[:12])
+    logging.debug("Received a Neighbor miss")
+    logging.debug("Family: {}".format(if_family.get(ndm_family,ndm_family)))
+    logging.debug("Interface index: {}".format(ndm_ifindex))
+    logging.debug("Family: {}".format(nud_state.get(ndm_state,ndm_family)))
+    logging.debug("Flags: {}".format(ndm_flags))
+    logging.debug("Type: {}".format(type.get(ndm_type,ndm_type)))
+
+    data=data[12:]
+    rta_len, rta_type = struct.unpack("=HH", data[:4])
+    logging.debug("RT Attributes: Len: {}, Type: {}".format(rta_len,nda_type.get(rta_type,rta_type)))
+  
+    data=data[4:]
+    if nda_type.get(rta_type,rta_type) == "NDA_DST":
+      dst=socket.inet_ntoa(data[:4])
+      logging.info("L3Miss: Who has IP: {}?".format(dst))
+
+    if nda_type.get(rta_type,rta_type) == "NDA_LLADDR":
+      mac="%02x:%02x:%02x:%02x:%02x:%02x" % struct.unpack("BBBBBB",data[:6])
+      logging.info("L2Miss: Who has MAC: {}?".format(mac))

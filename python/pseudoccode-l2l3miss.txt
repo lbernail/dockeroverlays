@@ -17,7 +17,7 @@ while True:
     logging.debug("Received a Neighbor miss")
     logging.debug("Family: {}".format(if_family.get(ndm_family,ndm_family)))
     logging.debug("Interface index: {}".format(ndm_ifindex))
-    logging.debug("Family: {}".format(nud_state.get(ndm_state,ndm_family)))
+    logging.debug("State: {}".format(nud_state.get(ndm_state,ndm_state)))
     logging.debug("Flags: {}".format(ndm_flags))
     logging.debug("Type: {}".format(type.get(ndm_type,ndm_type)))
 

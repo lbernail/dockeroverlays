@@ -1,5 +1,5 @@
 # Network creation
-docker0: docker network create --driver overlay --subnet 192.168.0.0/24 dockercon
+docker0: docker network create --driver overlay --internal --subnet 192.168.0.0/24 dockercon
 docker1: docker network ls
 
 # Connectivity
@@ -14,11 +14,10 @@ docker1: ping 192.168.0.100
 docker0
 docker exec C0 ip addr show
 docker exec C0 ip -details link show dev eth0
-docker exec C0 ip route show
 
 ** back to slides **
 
-# Where do ethX go?
+# Where do eth0 go?
 # sudo ln -s /var/run/docker/netns /var/run/netns
 sudo ip netns list
 docker inspect C0 -f {{.NetworkSettings.SandboxKey}}
@@ -26,12 +25,6 @@ sandbox=$(docker inspect C0 -f {{.NetworkSettings.SandboxKey}})
 C0netns=${sandbox##*/}
 sudo ip netns exec $C0netns ip addr show
 sudo ip netns exec $C0netns ethtool -S eth0
-
-# eth1
-ip -details link show
-docker inspect docker_gwbridge
-
-** back to slides **
 
 # eth0
 sudo ip netns ls
@@ -60,9 +53,6 @@ sudo ip netns exec $overns bridge fdb show br br0
 # Consul
 net=$(docker network inspect dockercon -f {{.Id}})
 curl -s http://consul1:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
-
-epid=$(docker inspect C0 -f {{.NetworkSettings.Networks.dockercon.EndpointID}})
-curl -s http://consul1:8500/v1/kv/docker/network/v1.0/endpoint/$net/$epid/ | jq -r ".[0].Value" | base64 -d | jq .
 
 python/dump_endpoints.py
 
@@ -120,11 +110,6 @@ sudo ip netns exec overns bridge fdb show
 ** back to slides **
 
 ## Netlink messages
-docker0-1: python/watch.py
-
-docker0-2: sudo ip link add dev test1  type veth peer name test2
-
-** back to slides **
 ## Catching L2/L3 miss
 docker0-1: sudo ip netns exec overns python/l2l3miss.py
 docker0-2: docker exec -it demo ping 192.168.0.3

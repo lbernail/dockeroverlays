@@ -1,3 +1,10 @@
+### Setup
+Remove everything from consul
+Remove all containers
+Remove dockercon overlay
+Remove overns NetNS
+Restart docker (to recreate consul key tree)
+
 # Network creation
 docker0: docker network create --driver overlay --internal --subnet 192.168.0.0/24 dockercon
 docker1: docker network ls
@@ -17,16 +24,8 @@ docker exec C0 ip -details link show dev eth0
 
 ** back to slides **
 
-# Where do eth0 go?
-# sudo ln -s /var/run/docker/netns /var/run/netns
-sudo ip netns list
-docker inspect C0 -f {{.NetworkSettings.SandboxKey}}
-sandbox=$(docker inspect C0 -f {{.NetworkSettings.SandboxKey}})
-C0netns=${sandbox##*/}
-sudo ip netns exec $C0netns ip addr show
-sudo ip netns exec $C0netns ethtool -S eth0
-
 # eth0
+ip link show
 sudo ip netns ls
 docker network inspect dockercon -f {{.Id}}
 overns=8-c4305b67cd
@@ -89,9 +88,12 @@ docker exec -it demo ping 192.168.0.3
 sudo ip netns exec overns ip neighbor show
 sudo ip netns exec overns bridge fdb show
 ./populate-arp-fdb.sh 3 10.200.129.100
+docker exec -it demo ping 192.168.0.3
 
 docker1
-./populate-arp-fdb.sh 2 10.200.128.100
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+./populate-arp.sh 2
 
 docker0
 docker exec -it demo ping 192.168.0.3
@@ -113,6 +115,7 @@ sudo ip netns exec overns bridge fdb show
 ## Catching L2/L3 miss
 docker0-1: sudo ip netns exec overns python/l2l3miss.py
 docker0-2: docker exec -it demo ping 192.168.0.3
+docker0-1: sudo ip netns exec overns tcpdump "arp"
 
 docker0-2: ./create-overlay.sh "l2miss l3miss"
 docker0-2: ./attach-ctn.sh demo 2

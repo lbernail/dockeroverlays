@@ -115,12 +115,6 @@ sudo ip netns exec overns bridge fdb show
 ## Catching L2/L3 miss
 docker0-1: sudo ip netns exec overns python/l2l3miss.py
 docker0-2: docker exec -it demo ping 192.168.0.3
-docker0-1: sudo ip netns exec overns tcpdump "arp"
-
-docker0-2: ./create-overlay.sh "l2miss l3miss"
-docker0-2: ./attach-ctn.sh demo 2
-docker0-1: sudo ip netns exec overns python/l2l3miss.py
-docker0-2: docker exec -it demo ping 192.168.0.3
 
 docker0-2: ./populate-arp.sh 3
 docker0-2: docker exec -it demo ping 192.168.0.3
@@ -131,7 +125,7 @@ docker0-2: docker exec -it demo ping 192.168.0.3
 ** back to slides **
 
 ## Using Consul to store Hosts, Mac address
-docker0-2: ./create-overlay.sh "l2miss l3miss"
+docker0-2: ./create-overlay.sh
 docker0-2: ./attach-ctn.sh demo 2
 
 docker0:

@@ -9,4 +9,8 @@ c=consul.Consul(host="consul1",port=8500)
 epdata=[ ep['Value'] for ep in endpoints if ep['Value'] is not None]
 
 for data in epdata:
-  print(json.dumps(json.loads(data.decode("utf-8")), indent=4, sort_keys=True))
+    jsondata=json.loads(data.decode("utf-8"))
+    print("Endpoint Name: %s" % jsondata["name"])
+    print("IP address: %s" % jsondata["ep_iface"]["addr"])
+    print("MAC address: %s" % jsondata["ep_iface"]["mac"])
+    print("Locator: %s\n" % jsondata["locator"])

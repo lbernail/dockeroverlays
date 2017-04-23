@@ -7,6 +7,7 @@ variable "server_type" { default = "t2.micro"}
 variable "key_pair" {}
 
 variable "consul_version" { default = "0.8.1" }
+variable "serf_version" { default = "0.7.0" }
 variable "consul_ip" { default = "10.0.0.5" }
 variable "docker0_ip" { default = "10.0.0.10" }
 variable "docker1_ip" { default = "10.0.0.11" }

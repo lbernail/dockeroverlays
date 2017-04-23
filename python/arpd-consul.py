@@ -12,7 +12,7 @@ from netconst import *
 
 vxlan_ns="overns"
 
-consul_host="consul1"
+consul_host="consul"
 consul_prefix="demo"
 
 logging.basicConfig(format='%(levelname)s %(message)s',level=logging.INFO)

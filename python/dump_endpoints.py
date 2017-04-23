@@ -3,7 +3,7 @@
 import consul
 import json
 
-c=consul.Consul(host="consul1",port=8500)
+c=consul.Consul(host="consul",port=8500)
 
 (idx,endpoints)=c.kv.get("docker/network/v1.0/endpoint/",recurse=True)
 epdata=[ ep['Value'] for ep in endpoints if ep['Value'] is not None]

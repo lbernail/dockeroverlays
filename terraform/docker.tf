@@ -47,6 +47,7 @@ data "template_file" "setup_docker0" {
     template     = "${file("${path.module}/files/setup_docker.tpl.sh")}"
     vars {
         TF_HOSTNAME = "docker0"
+        TF_HOST_IP = "${var.docker0_ip}"
         TF_CONSUL_IP = "${aws_instance.consul.private_ip}"
         TF_SERF_VERSION = "${var.serf_version}"
     }
@@ -70,6 +71,7 @@ data "template_file" "setup_docker1" {
     template     = "${file("${path.module}/files/setup_docker.tpl.sh")}"
     vars {
         TF_HOSTNAME = "docker1"
+        TF_HOST_IP = "${var.docker1_ip}"
         TF_CONSUL_IP = "${aws_instance.consul.private_ip}"
         TF_SERF_VERSION = "${var.serf_version}"
     }

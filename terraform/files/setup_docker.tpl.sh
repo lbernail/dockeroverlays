@@ -3,7 +3,7 @@ set -e
 
 echo "Setting hostname"
 echo ${TF_HOSTNAME} > /etc/hostname
-echo "$(hostname -I) ${TF_HOSTNAME}" >> /etc/hosts
+echo "${TF_HOST_IP} ${TF_HOSTNAME}" >> /etc/hosts
 hostname ${TF_HOSTNAME}
 
 echo "${TF_CONSUL_IP} consul" >> /etc/hosts
@@ -31,7 +31,6 @@ echo "Adding admin user to docker group"
 gpasswd -a admin docker
 
 echo "Adding a few helpers for demo purposes"
-ln -s /var/run/docker/netns /var/run/netns
 curl -sSL https://github.com/lbernail/dockercon2017/archive/master.tar.gz | tar -xzf - --strip-components=1 -C /home/admin
 chown -R admin:admin /home/admin
 pip install pyroute2 python-consul

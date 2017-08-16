@@ -9,6 +9,5 @@ sudo ip link add dev vxlan1 type vxlan id 42 proxy learning l2miss l3miss dstpor
 sudo ip link set vxlan1 netns overns
 sudo ip netns exec overns ip link set vxlan1 master br0
 
-
 sudo ip netns exec overns ip link set vxlan1 up
 sudo ip netns exec overns ip link set br0 up

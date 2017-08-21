@@ -26,10 +26,10 @@ docker exec C0 ip -details link show dev eth0
 
 # eth0
 ip link show
-sudo ip netns ls
+sudo ls -l /var/run/docker/netns
 docker network inspect dockercon -f {{.Id}}
-overns=8-c4305b67cd
-sudo ip netns exec $overns ip -d link show
+overns=/var/run/docker/netns/1-8b03c2bb53
+sudo nsenter --net=$overns ip -d link show
 
 ** back to slides **
 
@@ -39,13 +39,14 @@ sudo tcpdump -nn -i eth0 "port 4789"
 ** back to slides **
 
 # L2 and L3 tables
-sudo ip netns exec $overns ip neighbor show
-sudo ip netns exec $overns bridge fdb show br br0
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show
+
 
 docker1: docker run -d --ip 192.168.0.200 --net dockercon --name C1 debian sleep 3600
 docker0:
-sudo ip netns exec $overns ip neighbor show
-sudo ip netns exec $overns bridge fdb show br br0
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show br br0
 
 ** back to slides **
 
@@ -85,14 +86,14 @@ docker exec -it demo ping 192.168.0.3
 
 ** back to slides **
 
-sudo ip netns exec overns ip neighbor show
-sudo ip netns exec overns bridge fdb show
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show
 ./populate-arp-fdb.sh 3 10.200.129.100
 docker exec -it demo ping 192.168.0.3
 
 docker1
-sudo ip netns exec overns ip neighbor show
-sudo ip netns exec overns bridge fdb show
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show
 ./populate-arp.sh 2
 
 docker0
@@ -129,10 +130,10 @@ docker0-2: ./create-overlay.sh
 docker0-2: ./attach-ctn.sh demo 2
 
 docker0:
-curl -X PUT -d '02:42:c0:a8:00:02' http://consul1:8500/v1/kv/demo/arp/192.168.0.2
-curl -X PUT -d '02:42:c0:a8:00:03' http://consul1:8500/v1/kv/demo/arp/192.168.0.3
-curl -X PUT -d '10.200.128.100' http://consul1:8500/v1/kv/demo/fib/02:42:c0:a8:00:02
-curl -X PUT -d '10.200.129.100' http://consul1:8500/v1/kv/demo/fib/02:42:c0:a8:00:03
+curl -X PUT -d '02:42:c0:a8:00:02' http://consul:8500/v1/kv/demo/arp/192.168.0.2
+curl -X PUT -d '02:42:c0:a8:00:03' http://consul:8500/v1/kv/demo/arp/192.168.0.3
+curl -X PUT -d '10.0.0.10' http://consul:8500/v1/kv/demo/fib/02:42:c0:a8:00:02
+curl -X PUT -d '10.0.0.11' http://consul:8500/v1/kv/demo/fib/02:42:c0:a8:00:03
 
 docker0-1: 
 sudo python/arpd-consul.py

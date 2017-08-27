@@ -10,6 +10,15 @@ resource "aws_security_group" "quagga" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 179
+    to_port     = 179
+    protocol    = "tcp"
+    cidr_blocks = ["${var.cidr_block}"]
+  }
+
+
+
   egress {
     from_port       = 0
     to_port         = 0
@@ -41,6 +50,7 @@ data "template_file" "setup_quagga" {
 
   vars {
     TF_HOSTNAME = "quagga"
+    TF_USER = "${var.docker_user}"
     TF_HOST_IP = "${var.quagga_ip}"
   }
 }

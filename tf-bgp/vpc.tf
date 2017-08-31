@@ -8,9 +8,12 @@ resource "aws_vpc" "main" {
   }
 }
 
+data "aws_availability_zones" "available" {}
+
 resource "aws_subnet" "demo" {
+  count      = "${length(data.aws_availability_zones.available.names)}"
   vpc_id     = "${aws_vpc.main.id}"
-  cidr_block = "${var.cidr_block}"
+  cidr_block = "${cidrsubnet(var.cidr_block, 8, count.index)}"
 
   availability_zone       = "${var.az}"
   map_public_ip_on_launch = "true"
@@ -43,6 +46,7 @@ resource "aws_route" "public_default" {
 }
 
 resource "aws_route_table_association" "rtap" {
-  subnet_id      = "${aws_subnet.demo.id}"
+  count          = "${length(data.aws_availability_zones.available.names)}"
+  subnet_id      = "${aws_subnet.demo.*.id[count.index]}"
   route_table_id = "${aws_route_table.public.id}"
 }

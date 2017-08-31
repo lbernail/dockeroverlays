@@ -6,8 +6,6 @@ echo ${TF_HOSTNAME} > /etc/hostname
 echo "${TF_HOST_IP} ${TF_HOSTNAME}" >> /etc/hosts
 hostname ${TF_HOSTNAME}
 
-echo "${TF_QUAGGA_IP} quagga" >> /etc/hosts
-
 echo "Installing dependencies..."
 apt-get update
 apt-get install -y apt-transport-https ca-certificates tcpdump ethtool vim curl python-pip jq unzip
@@ -18,19 +16,19 @@ apt-get update
 apt-get install -y docker-engine
 
 echo "Adding ${TF_USER} user to docker group"
-gpasswd -a ubuntu docker
+gpasswd -a ${TF_USER} docker
 
 echo "Adding a few helpers for demo purposes"
 curl -sSL https://github.com/lbernail/dockercon2017/archive/master.tar.gz | tar -xzf - --strip-components=1 -C /home/${TF_USER}
 chown -R ${TF_USER}:${TF_USER} /home/${TF_USER}
 pip install pyroute2
 
-echo "Installing cumulus Quagga"
-apt-get install -y iproute libsnmp30
-curl -sSL http://cumulusfiles.s3.amazonaws.com/roh-3.3.2-ubuntu1604.tar | tar -xC /tmp
-dpkg -i /tmp/quagga_*
-
-cat <<EOF > /etc/quagga/daemons
+echo "Generating Quagga configuration"
+mkdir -p  /home/${TF_USER}/quagga/
+cat <<EOF > /home/${TF_USER}/quagga/Quagga.conf
+${TF_QUAGGA_CONF}
+EOF
+cat <<EOF > /home/${TF_USER}/quagga/daemons
 zebra=yes
 bgpd=yes
 ospfd=no
@@ -38,10 +36,14 @@ ospf6d=no
 ripd=no
 ripngd=no
 isisd=no
-pimd=no
-ldpd=no
+EOF
+cat <<EOF > /home/${TF_USER}/quagga/debian.conf
+vtysh_enable=yes 
+zebra_options=" --daemon -A 127.0.0.1 "
+bgpd_options=" --daemon -A 127.0.0.1 "
 EOF
 
-systemctl enable quagga
-systemctl start quagga
+chown -R ${TF_USER}:${TF_USER} /home/${TF_USER}/quagga
 
+echo "Starting Cumulus Quagga with docker"
+docker run -t -d --privileged --name quagga -p 179:179 --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest

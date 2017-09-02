@@ -1,0 +1,11 @@
+
+sudo ip netns exec gateway iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+
+
+docker run -d --net=none --name dhcp -v "$(pwd)/dhcp":/data networkboot/dhcpd eth0
+sudo ./plumb -m 1450 br0@overns dhcp 192.168.0.254/24@192.168.0.1
+
+docker run -d --net=none --name=demo debian sleep infinity
+sudo ./plumb -m 1450 br0@overns demo dhcp
+
+

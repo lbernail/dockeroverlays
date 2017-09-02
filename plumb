@@ -58,7 +58,11 @@ die () {
 }
 
 case "$IPADDR" in
+    dhcp)
+      DHCP=true
+      ;;
     */*@*)
+      DHCP=false
       GATEWAY="${IPADDR#*@}" GATEWAY="${GATEWAY%%@*}"
       IPADDR="${IPADDR%%@*}"
       ;;
@@ -129,9 +133,13 @@ fi
 ip link set dev "$GUEST_IFNAME" netns "$GUEST_NS"
 ip netns exec "$GUEST_NS" ip link set "$GUEST_IFNAME" name "$CONTAINER_IFNAME"
 [ "$MACADDR" ] && ip netns exec "$GUEST_NS" ip link set dev "$CONTAINER_IFNAME" address "$MACADDR"
-ip netns exec "$GUEST_NS" ip addr add "$IPADDR" dev "$CONTAINER_IFNAME"
 ip netns exec "$GUEST_NS" ip link set "$CONTAINER_IFNAME" up
 
-[ "$GATEWAY" ] && ip netns exec "$GUEST_NS" ip route add default via "$GATEWAY" dev "$CONTAINER_IFNAME"
+if [ "$DHCP" = true ]; then
+    ip netns exec "$GUEST_NS" dhclient "$CONTAINER_IFNAME"
+else
+    ip netns exec "$GUEST_NS" ip addr add "$IPADDR" dev "$CONTAINER_IFNAME"
+    [ "$GATEWAY" ] && ip netns exec "$GUEST_NS" ip route add default via "$GATEWAY" dev "$CONTAINER_IFNAME"
+fi
 
 echo $GUEST_NS

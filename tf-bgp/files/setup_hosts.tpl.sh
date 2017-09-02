@@ -21,7 +21,6 @@ gpasswd -a ${TF_USER} docker
 echo "Adding a few helpers for demo purposes"
 curl -sSL https://github.com/lbernail/dockercon2017/archive/master.tar.gz | tar -xzf - --strip-components=1 -C /home/${TF_USER}
 chown -R ${TF_USER}:${TF_USER} /home/${TF_USER}
-pip install pyroute2
 
 echo "Generating Quagga configuration"
 mkdir -p  /home/${TF_USER}/quagga/

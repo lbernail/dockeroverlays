@@ -46,13 +46,15 @@ resource "aws_instance" "quagga" {
 
 data "template_file" "setup_quagga" {
   count = "${var.quagga_hosts}"
-  template = "${file("${path.module}/files/setup_hosts.tpl.sh")}"
+  template = "${file("${path.module}/files/setup_host.tpl.sh")}"
 
   vars {
     TF_HOSTNAME = "quagga${count.index}"
     TF_USER = "${var.docker_user}"
     TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.quagga_hostnum)}"
     TF_QUAGGA_CONF = "${data.template_file.conf_quagga_rr.*.rendered[count.index]}"
+    TF_QUAGGA_NET = "bridge"
+    TF_PULL_IMAGES = "cumulusnetworks/quagga:latest"
   }
 }
 

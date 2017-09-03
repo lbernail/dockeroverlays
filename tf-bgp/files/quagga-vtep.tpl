@@ -1,6 +1,4 @@
-! BGP will not initiate session over default routes
-ip route ${TF_VPC_CIDR} 172.17.0.1
-
+${TF_QUAGGA_NET == "bridge" ? "ip route ${TF_VPC_CIDR} 172.17.0.1\n" : ""}
 router bgp 65000
   bgp router-id ${TF_HOST_IP}
   !

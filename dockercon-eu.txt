@@ -1,3 +1,18 @@
+quagga0
+docker exec -it quagga vtysh
+# show bgp neighbors
+# show run
+
+docker0
+Start quagga
+
+quagga0
+# show bgp neighbors
+# show bgp evpn route
+
+docker run -d --net=none --name=demo debian sleep infinity
+sudo ./plumb -m 1450 br0@overns demo 192.168.0.10/24@192.168.0.1 02:42:c0:a8:00:0a
+
 
 sudo ip netns exec gateway iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
 

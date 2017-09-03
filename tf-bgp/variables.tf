@@ -19,5 +19,7 @@ variable "bgp_cluster_id" {default = "111.111.111.111"}
 
 variable "quagga_hostnum" { default = "5" }
 variable "docker_hostnum" { default = "10" }
+variable "simple_hostnum" { default = "20" }
 variable "quagga_hosts" {default = "2"}
 variable "docker_hosts" {default = "2"}
+variable "simple_hosts" {default = "1"}

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+TARGET_NS=${1:-host}
+shift
+VXLAN_OPTIONS="$@"
+
+warn () {
+  echo "$@" >&2
+}
+
+die () {
+  status="$1"
+  shift
+  warn "$@"
+  exit "$status"
+}
+
+check_if () {
+  interface=$1
+  namespace=${2:host}
+  if [ "$namespace" == "host" ]; then
+    if ip link show $interface > /dev/null 2>&1 ; then
+        return 1
+    fi
+  else
+    if ip netns exec $namespace ip link show $interface > /dev/null 2>&1 ; then
+        return 1
+    fi
+  fi
+  return 0 
+}
+
+
+[ ! -d /var/run/netns ] && mkdir -p /var/run/netns
+
+case "$TARGET_NS" in
+    host)
+      TARGET_NS="host"
+      ;;
+    container:*)
+      TARGET_NS="${TARGET_NS#*:}" 
+      if ! GUEST_NS_PATH=$(docker inspect --format="{{ .NetworkSettings.SandboxKey}}" $TARGET_NS 2> /dev/null); then
+         die 1 "No container $TARGET_NS"
+      fi
+      ln -sf "$GUEST_NS_PATH" "/var/run/netns/$TARGET_NS"
+      ;;
+    *)
+      if ! ip netns exec "$TARGET_NS" ip addr show  > /dev/null 2>&1 ; then
+          echo "Creating Namespace $TARGET_NS"
+          ip netns add "$TARGET_NS"
+     fi
+esac
+
+if ! check_if "br0" "$TARGET_NS"; then
+    die 1 "Interface br0 already exists in $TARGET_NS namespace"
+fi
+if ! check_if "vxlan1" "$TARGET_NS"; then
+    die 1 "Interface vxlan1 already exists in $TARGET_NS namespace"
+fi
+
+ip link add dev vxlan1 type vxlan id 42 dstport 4789 $VXLAN_OPTIONS
+if [ "$TARGET_NS" == "host" ] ; then
+    ip link add dev br0 type bridge
+    ip link set vxlan1 master br0
+    ip link set vxlan1 up
+    ip link set br0 up
+else
+    ip netns exec "$TARGET_NS" ip link add dev br0 type bridge
+    sudo ip link set vxlan1 netns "$TARGET_NS"
+    ip netns exec "$TARGET_NS" ip link set vxlan1 master br0
+    ip netns exec "$TARGET_NS" ip link set vxlan1 master br0
+    ip netns exec "$TARGET_NS" ip link set vxlan1 up
+    ip netns exec "$TARGET_NS" ip link set br0 up
+fi

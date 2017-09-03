@@ -44,5 +44,10 @@ EOF
 
 chown -R ${TF_USER}:${TF_USER} /home/${TF_USER}/quagga
 
+echo "Pulling images"
+for image in ${TF_PULL_IMAGES}; do
+    docker pull $image
+done
+
 echo "Starting Cumulus Quagga with docker"
-docker run -t -d --privileged --name quagga -p 179:179 --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest
+docker run -t -d --privileged --name quagga -p 179:179 --net=${TF_QUAGGA_NET} --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest

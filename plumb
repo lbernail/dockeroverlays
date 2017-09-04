@@ -1,5 +1,4 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
 
 # default value set further down if not set here
 CONTAINER_IFNAME=

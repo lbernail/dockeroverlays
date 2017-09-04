@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
-TARGET_NS=${1:-host}
-shift
+
+VXLAN_ID=$1
+TARGET_NS=${2:-host}
+shift 2
 VXLAN_OPTIONS="$@"
+
+case $VXLAN_ID in
+    ''|*[!0-9]*)
+      echo "Syntax:"
+      echo "$0 <vxlan-id> [namespace] [vxlan options]" 
+      echo "$0 <vxlan-id> [container:name] [vxlan options]" 
+      exit 1
+    ;;
+    *)
+    ;;
+esac
 
 warn () {
   echo "$@" >&2
@@ -57,7 +70,7 @@ if ! check_if "vxlan1" "$TARGET_NS"; then
     die 1 "Interface vxlan1 already exists in $TARGET_NS namespace"
 fi
 
-ip link add dev vxlan1 type vxlan id 42 dstport 4789 $VXLAN_OPTIONS
+ip link add dev vxlan1 type vxlan id $VXLAN_ID dstport 4789 $VXLAN_OPTIONS
 if [ "$TARGET_NS" == "host" ] ; then
     ip link add dev br0 type bridge
     ip link set vxlan1 master br0

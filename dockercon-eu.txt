@@ -10,6 +10,10 @@ quagga0
 # show bgp neighbors
 # show bgp evpn route
 
+docker0
+Create vxlan interface in quagga net namespace
+
+
 docker run -d --net=none --name=demo debian sleep infinity
 sudo ./plumb -m 1450 br0@overns demo 192.168.0.10/24@192.168.0.1 02:42:c0:a8:00:0a
 

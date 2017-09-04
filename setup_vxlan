@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
 
+if [ $EUID -ne 0 ]; then
+   echo "This script must be run as root"
+   exit 1
+fi
+
 VXLAN_ID=$1
-TARGET_NS=${2:-host}
-shift 2
-VXLAN_OPTIONS="$@"
+TARGET_NS=$2
 
 case $VXLAN_ID in
     ''|*[!0-9]*)
-      echo "Syntax:"
-      echo "$0 <vxlan-id> [namespace] [vxlan options]" 
-      echo "$0 <vxlan-id> [container:name] [vxlan options]" 
-      exit 1
-    ;;
+      VXLAN_ID=
+   ;;
     *)
     ;;
 esac
+
+shift 2
+VXLAN_OPTIONS="$@"
+VXLAN_IF="vxlan$VXLAN_ID"
+
+[ -z "$VXLAN_ID" ] || [ -z "$TARGET_NS" ] && {
+    echo "Syntax:"
+    echo "$0 <vxlan-id> host [vxlan options]" 
+    echo "$0 <vxlan-id> <namespace> [vxlan options]" 
+    echo "$0 <vxlan-id> container:<name> [vxlan options]" 
+    exit 1
+}
 
 warn () {
   echo "$@" >&2
@@ -66,21 +78,27 @@ esac
 if ! check_if "br0" "$TARGET_NS"; then
     die 1 "Interface br0 already exists in $TARGET_NS namespace"
 fi
-if ! check_if "vxlan1" "$TARGET_NS"; then
-    die 1 "Interface vxlan1 already exists in $TARGET_NS namespace"
+if ! check_if "$VXLAN_IF" "host"; then
+    die 1 "Interface $VXLAN_IF already exists in host namespace"
+fi
+if ! check_if "$VXLAN_IF" "$TARGET_NS"; then
+    die 1 "Interface $VXLAN_IF already exists in $TARGET_NS namespace"
 fi
 
-ip link add dev vxlan1 type vxlan id $VXLAN_ID dstport 4789 $VXLAN_OPTIONS
+if ! ip link add dev $VXLAN_IF type vxlan id $VXLAN_ID dstport 4789 $VXLAN_OPTIONS ; then
+    die 1 "Unable to create vxlan interface (invalid option or existing interface with vxlan id $VXLAN_ID)"
+fi 
+
 if [ "$TARGET_NS" == "host" ] ; then
     ip link add dev br0 type bridge
-    ip link set vxlan1 master br0
-    ip link set vxlan1 up
+    ip link set $VXLAN_IF master br0
+    ip link set $VXLAN_IF up
     ip link set br0 up
 else
     ip netns exec "$TARGET_NS" ip link add dev br0 type bridge
-    sudo ip link set vxlan1 netns "$TARGET_NS"
-    ip netns exec "$TARGET_NS" ip link set vxlan1 master br0
-    ip netns exec "$TARGET_NS" ip link set vxlan1 master br0
-    ip netns exec "$TARGET_NS" ip link set vxlan1 up
+    sudo ip link set $VXLAN_IF netns "$TARGET_NS"
+    ip netns exec "$TARGET_NS" ip link set $VXLAN_IF master br0
+    ip netns exec "$TARGET_NS" ip link set $VXLAN_IF master br0
+    ip netns exec "$TARGET_NS" ip link set $VXLAN_IF up
     ip netns exec "$TARGET_NS" ip link set br0 up
 fi

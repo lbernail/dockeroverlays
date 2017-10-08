@@ -55,6 +55,7 @@ data "template_file" "setup_quagga" {
     TF_QUAGGA_CONF = "${data.template_file.conf_quagga_rr.*.rendered[count.index]}"
     TF_QUAGGA_NET = "bridge"
     TF_PULL_IMAGES = "cumulusnetworks/quagga:latest"
+    TF_START_QUAGGA = "yes"
   }
 }
 

@@ -50,4 +50,7 @@ for image in ${TF_PULL_IMAGES}; do
 done
 
 echo "Starting Cumulus Quagga with docker"
-docker run -t -d --privileged --name quagga -p 179:179 --net=${TF_QUAGGA_NET} --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest
+if [ "${TF_START_QUAGGA}" == "yes" ]
+then
+   docker run -t -d --privileged --name quagga -p 179:179 --net=${TF_QUAGGA_NET} --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest
+fi

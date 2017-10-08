@@ -54,6 +54,7 @@ data "template_file" "setup_docker" {
         TF_QUAGGA_CONF = "${data.template_file.conf_quagga_vtep_docker.*.rendered[count.index]}"
         TF_QUAGGA_NET = "bridge"
         TF_PULL_IMAGES = "cumulusnetworks/quagga:latest networkboot/dhcpd debian"
+        TF_START_QUAGGA = "no"
     }
 }
 
@@ -93,6 +94,7 @@ data "template_file" "setup_simple" {
         TF_QUAGGA_CONF = "${data.template_file.conf_quagga_vtep_simple.*.rendered[count.index]}"
         TF_QUAGGA_NET = "host"
         TF_PULL_IMAGES = "cumulusnetworks/quagga:latest"
+        TF_START_QUAGGA = "yes"
     }
 }
 

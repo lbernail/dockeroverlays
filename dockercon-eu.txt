@@ -103,13 +103,32 @@ docker1
 docker run -d --net=none --name=demo debian sleep infinity
 sudo ./plumb -m 1450 br0@quagga demo 192.168.0.20/24 02:42:c0:a8:00:20
 
-sudo ip netns exec gateway iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+# Ping
+docker exec -it demo ping 192.168.0.20
 
+# Gateway
+docker0
+docker run -d --name=gateway debian sleep infinity
+sudo ./plumb -i eth1 -m 1450 br0@quagga gateway 192.168.0.1/24
+sudo ip netns exec gateway iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
+docker1
+docker exec -it demo ping 8.8.8.8
+sudo ip netns exec demo ip route add default via 192.168.0.1
+docker exec -it demo ping 8.8.8.8
+
+# dhcp
+docker0
 docker run -d --net=none --name dhcp -v "$(pwd)/dhcp":/data networkboot/dhcpd eth0
-sudo ./plumb -m 1450 br0@overns dhcp 192.168.0.254/24@192.168.0.1
+sudo ./plumb -m 1450 br0@quagga dhcp 192.168.0.254/24@192.168.0.1
 
-docker run -d --net=none --name=demo debian sleep infinity
-sudo ./plumb -m 1450 br0@overns demo dhcp
+docker1
+docker run -d --net=none --name=demodhcp debian sleep infinity
+sudo ./plumb -m 1450 br0@quagga demodhcp dhcp
 
+# non docker
+simple0
+sudo ./setup_vxlan 42 host dstport 4789
+sudo dhclient br0
+ping 192.168.0.10
 

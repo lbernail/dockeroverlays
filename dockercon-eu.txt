@@ -1,72 +1,36 @@
-### Setup
-Remove everything from consul
-Remove all containers
-Remove dockercon overlay
-Remove overns NetNS
-Restart docker (to recreate consul key tree)
-
-# Network creation
-docker0: docker network create --driver overlay --internal --subnet 192.168.0.0/24 dockercon
-docker1: docker network ls
-
-# Connectivity
-docker0: docker run -d --ip 192.168.0.100 --net dockercon --name C0 debian sleep infinity
-docker1: docker run -it --rm --net dockercon debian
-
-# Configuration
-docker exec C0 ip addr
-ip addr show
-docker network ls
-
-overns=/var/run/docker/netns/xxxx
-sudo nsenter --net=$overns ip addr
-
-# VXLAN
-docker0:
-sudo tcpdump -nn -i eth0 "port 4789"
-docker1:
-docker run -it --rm --net dockercon debian ping 192.168.0.100
-
-# Discovery
-sudo nsenter --net=$overns ip neighbor show
-sudo nsenter --net=$overns bridge fdb show
-
-# Distribution
-net=$(docker network inspect dockercon -f {{.Id}})
-curl -s http://consul:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
-python/dump_endpoints.py
-serf agent -bind 0.0.0.0:17946 -join 10.0.0.11:7946 -node demo -log-level=debug -event-handler=./serf.sh
-
-docker1: docker run -d --net dockercon debian sleep infinity
-
 # Manual overlay
-both: sudo ./setup_vxlan 42 overns proxy dstport 4789
+## BOTH
+sudo ./setup_vxlan 42 overns proxy dstport 4789
 
 # Move interfaces to containers
 # Create containers
-docker0: docker run -d --net=none --name=demo debian sleep infinity
-docker1: docker run -d --net=none --name=demo debian sleep infinity
+## BOTH
+docker run -d --net=none --name=demo debian sleep infinity
+docker run -d --net=none --name=demo debian sleep infinity
 
-docker0: docker exec demo ip link show
+## DOCKER0
+docker exec demo ip link show
+sudo ./plumb br42@overns demo 192.168.0.10/24 02:42:c0:a8:00:10
 
-docker0: sudo ./plumb -m 1450 br0@overns demo 192.168.0.10/24 02:42:c0:a8:00:10
-docker1: sudo ./plumb -m 1450 br0@overns demo 192.168.0.20/24 02:42:c0:a8:00:20
+## DOCKER1
+sudo ./plumb br42@overns demo 192.168.0.20/24 02:42:c0:a8:00:20
 
-docker0: docker exec demo ip addr show
+## DOCKER0
+docker exec demo ip addr show
 
 ## Test ping?
 docker exec -it demo ping 192.168.0.20
 sudo ip netns exec overns ip neighbor show
 
-docker0:
+## DOCKER0
 sudo ip netns exec overns ip neighbor add 192.168.0.20 lladdr 02:42:c0:a8:00:20 dev vxlan42
 sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:20 dev vxlan42 self dst 10.0.1.10 vni 42 port 4789
 
-docker1:
+## DOCKER1
 sudo ip netns exec overns ip neighbor add 192.168.0.10 lladdr 02:42:c0:a8:00:10 dev vxlan42
 sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:10 dev vxlan42 self dst 10.0.0.10 vni 42 port 4789
 
-docker0:
+## DOCKER0
 docker exec -it demo ping 192.168.0.20
 
 
@@ -77,10 +41,10 @@ docker rm -f demo
 sudo rm /var/run/netns/demo
 
 ## Start BGP
-docker0 and docker1
+## BOTH
 docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga
 
-#docker0
+## DOCKER0
 docker exec -it quagga vtysh
 show run
 show bgp neighbors
@@ -88,47 +52,76 @@ show bgp evpn summary
 show bgp evpn route
 show bgp evpn vni
 
-# both
+## BOTH
 sudo ./setup_vxlan 42 container:quagga dstport 4789
+## DOCKER0
+docker exec -it quagga vtysh
 show evpn vni
-show evpn mac vni all
 show bgp evpn route
+show evpn mac vni all
 
 # Create container and attach it
-docker0
+## DOCKER0
 docker run -d --net=none --name=demo debian sleep infinity
-sudo ./plumb -m 1450 br0@quagga demo 192.168.0.10/24 02:42:c0:a8:00:10
+sudo ./plumb br42@quagga demo 192.168.0.10/24 02:42:c0:a8:00:10
 
-docker1
+## DOCKER1
 docker run -d --net=none --name=demo debian sleep infinity
-sudo ./plumb -m 1450 br0@quagga demo 192.168.0.20/24 02:42:c0:a8:00:20
+sudo ./plumb br42@quagga demo 192.168.0.20/24 02:42:c0:a8:00:20
 
 # Ping
 docker exec -it demo ping 192.168.0.20
 
+## DOCKER0
+docker exec -it quagga vtysh
+show evpn vni
+show bgp evpn route
+show evpn mac vni all
+
+## Second overlay?
+## BOTH
+sudo ./setup_vxlan 66 container:quagga dstport 4789
+
+## DOCKER0
+docker run -d --net=none --name=demo66 debian sleep infinity
+sudo ./plumb br66@quagga demo66 192.168.66.10/24 02:42:c0:a8:66:10
+## DOCKER1
+docker run -d --net=none --name=demo66 debian sleep infinity
+sudo ./plumb br66@quagga demo66 192.168.66.20/24 02:42:c0:a8:66:20
+
+## DOCKER0
+docker exec -it demo66 ping 192.168.66.20
+docker exec -it demo66 ping 192.168.0.20
+docker exec -it quagga vtysh
+show evpn vni
+show evpn mac vni all
+
 # Gateway
-docker0
+## DOCKER0
 docker run -d --name=gateway debian sleep infinity
-sudo ./plumb -i eth1 -m 1450 br0@quagga gateway 192.168.0.1/24
+sudo ./plumb -i eth1 br42@quagga gateway 192.168.0.1/24
 sudo ip netns exec gateway iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
-docker1
+## DOCKER1
 docker exec -it demo ping 8.8.8.8
 sudo ip netns exec demo ip route add default via 192.168.0.1
 docker exec -it demo ping 8.8.8.8
 
 # dhcp
-docker0
+## DOCKER0
 docker run -d --net=none --name dhcp -v "$(pwd)/dhcp":/data networkboot/dhcpd eth0
-sudo ./plumb -m 1450 br0@quagga dhcp 192.168.0.254/24@192.168.0.1
+sudo ./plumb br42@quagga dhcp 192.168.0.254/24@192.168.0.1
 
-docker1
+## DOCKER1
 docker run -d --net=none --name=demodhcp debian sleep infinity
-sudo ./plumb -m 1450 br0@quagga demodhcp dhcp
+sudo ./plumb br42@quagga demodhcp dhcp
 
 # non docker
-simple0
+## GATEWAY0
 sudo ./setup_vxlan 42 host dstport 4789
-sudo dhclient br0
+sudo ip addr add dev br42 192.168.0.100/24
 ping 192.168.0.10
 
+# Native access without VXLAN?
+## Docker0
+sudo ip netns exec gateway ip route add 10.0.0.0/16 via 192.168.0.100

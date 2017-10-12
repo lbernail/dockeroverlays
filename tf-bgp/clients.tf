@@ -11,6 +11,14 @@ resource "aws_security_group" "client" {
   }
 
   ingress {
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    self        = "true"
+  }
+
+
+  ingress {
     from_port   = 4789
     to_port     = 4789
     protocol    = "udp"
@@ -51,9 +59,10 @@ data "template_file" "setup_docker" {
         TF_HOSTNAME = "docker${count.index}"
         TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.docker_hostnum)}"
         TF_USER = "${var.docker_user}"
+        TF_QUAGGA_VERSION = "${var.quagga_version}"
         TF_QUAGGA_CONF = "${data.template_file.conf_quagga_vtep_docker.*.rendered[count.index]}"
         TF_QUAGGA_NET = "bridge"
-        TF_PULL_IMAGES = "cumulusnetworks/quagga:latest networkboot/dhcpd debian"
+        TF_PULL_IMAGES = "cumulusnetworks/quagga:${var.quagga_version} networkboot/dhcpd debian"
         TF_START_QUAGGA = "no"
     }
 }
@@ -93,9 +102,10 @@ data "template_file" "setup_gateway" {
         TF_HOSTNAME = "gateway${count.index}"
         TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.gateway_hostnum)}"
         TF_USER = "${var.docker_user}"
+        TF_QUAGGA_VERSION = "${var.quagga_version}"
         TF_QUAGGA_CONF = "${data.template_file.conf_quagga_vtep_gateway.*.rendered[count.index]}"
         TF_QUAGGA_NET = "host"
-        TF_PULL_IMAGES = "cumulusnetworks/quagga:latest"
+        TF_PULL_IMAGES = "cumulusnetworks/quagga:${var.quagga_version}"
         TF_START_QUAGGA = "yes"
     }
 }

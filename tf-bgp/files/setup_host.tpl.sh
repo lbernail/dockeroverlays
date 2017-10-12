@@ -8,7 +8,7 @@ hostname ${TF_HOSTNAME}
 
 echo "Installing dependencies..."
 apt-get update
-apt-get install -y apt-transport-https ca-certificates tcpdump ethtool vim curl python-pip jq unzip iputils-arping
+apt-get install -y apt-transport-https ca-certificates tcpdump ethtool vim curl python-pip jq unzip iputils-arping bridge-utils
 apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
 
 echo "deb https://apt.dockerproject.org/repo debian-jessie main" > /etc/apt/sources.list.d/docker.list
@@ -52,5 +52,5 @@ done
 echo "Starting Cumulus Quagga with docker"
 if [ "${TF_START_QUAGGA}" == "yes" ]
 then
-   docker run -t -d --privileged --name quagga -p 179:179 --net=${TF_QUAGGA_NET} --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:latest
+   docker run -t -d --privileged --name quagga -p 179:179 --net=${TF_QUAGGA_NET} --hostname ${TF_HOSTNAME} -v /home/${TF_USER}/quagga:/etc/quagga cumulusnetworks/quagga:${TF_QUAGGA_VERSION}
 fi

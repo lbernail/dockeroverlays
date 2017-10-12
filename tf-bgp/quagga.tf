@@ -52,9 +52,10 @@ data "template_file" "setup_quagga" {
     TF_HOSTNAME = "quagga${count.index}"
     TF_USER = "${var.docker_user}"
     TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.quagga_hostnum)}"
+    TF_QUAGGA_VERSION = "${var.quagga_version}"
     TF_QUAGGA_CONF = "${data.template_file.conf_quagga_rr.*.rendered[count.index]}"
     TF_QUAGGA_NET = "bridge"
-    TF_PULL_IMAGES = "cumulusnetworks/quagga:latest"
+    TF_PULL_IMAGES = "cumulusnetworks/quagga:${var.quagga_version}"
     TF_START_QUAGGA = "yes"
   }
 }

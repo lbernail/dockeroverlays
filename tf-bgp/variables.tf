@@ -18,6 +18,7 @@ variable "server_ami" {
 
 variable "bgp_cluster_id" {default = "111.111.111.111"}
 
+variable "quagga_version" { default ="CL3.2.1_evpn"}
 variable "quagga_hostnum" { default = "5" }
 variable "docker_hostnum" { default = "10" }
 variable "gateway_hostnum" { default = "20" }

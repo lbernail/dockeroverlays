@@ -119,7 +119,7 @@ sudo ./plumb br42@quagga demodhcp dhcp
 # non docker
 ## GATEWAY0
 sudo ./setup_vxlan 42 host dstport 4789
-sudo ip addr add dev br42 192.168.0.100/24
+sudo ip addr add dev br42 192.168.0.1/24
 ping 192.168.0.10
 
 # Native access without VXLAN?

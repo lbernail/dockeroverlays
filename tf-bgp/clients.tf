@@ -63,6 +63,7 @@ data "template_file" "conf_quagga_vtep_docker" {
     template     = "${file("${path.module}/files/quagga-vtep.tpl")}"
     vars {
         TF_VPC_CIDR = "${var.cidr_block}"
+        TF_GATEWAY = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],1)}"
         TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.docker_hostnum)}"
         TF_ROUTE_REFLECTORS = "${join(",",aws_instance.quagga.*.private_ip)}"
         TF_QUAGGA_NET = "bridge"
@@ -104,6 +105,7 @@ data "template_file" "conf_quagga_vtep_gateway" {
     template     = "${file("${path.module}/files/quagga-vtep.tpl")}"
     vars {
         TF_VPC_CIDR = "${var.cidr_block}"
+        TF_GATEWAY = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],1)}"
         TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.gateway_hostnum)}"
         TF_ROUTE_REFLECTORS = "${join(",",aws_instance.quagga.*.private_ip)}"
         TF_QUAGGA_NET = "host"

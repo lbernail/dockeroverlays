@@ -1,4 +1,4 @@
-${TF_QUAGGA_NET == "bridge" ? "ip route ${TF_VPC_CIDR} 172.17.0.1\n" : ""}
+${TF_QUAGGA_NET == "bridge" ? "ip route ${TF_VPC_CIDR} 172.17.0.1\n" : "ip route ${TF_VPC_CIDR} ${TF_GATEWAY}\n"}
 router bgp 65000
   bgp router-id ${TF_HOST_IP}
   !

@@ -43,6 +43,7 @@ sudo rm /var/run/netns/demo
 ## Start BGP
 ## BOTH
 docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga
+docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga:CL3.2.1_evpn
 
 ## DOCKER0
 docker exec -it quagga vtysh
@@ -119,8 +120,19 @@ sudo ./plumb br42@quagga demodhcp dhcp
 # non docker
 ## GATEWAY0
 sudo ./setup_vxlan 42 host dstport 4789 nolearning
-sudo ip addr add dev br42 192.168.0.1/24
+sudo ip addr add dev br42 192.168.0.100/24
 ping 192.168.0.10
+
+
+######
+sudo ./setup_vxlan 42 container:quagga dstport 4789 nolearning
+sudo ip link add dev vethbr type veth peer name vethgw
+sudo ip link set dev vethbr netns quagga
+sudo ip netns exec quagga ip link set vethbr master br42
+sudo ip netns exec quagga ip link set vethbr up
+sudo ip link set dev vethgw address 02:42:c0:a8:00:01
+sudo ip addr add dev vethgw 192.168.0.1/24
+sudo ip link set vethgw up
 
 # Native access without VXLAN?
 ## Docker0

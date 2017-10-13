@@ -1,5 +1,5 @@
 variable "region" { default = "eu-west-1"}
-variable "az" { default = "eu-west-1a"}
+variable "az" { default = ["eu-west-1a", "eu-west-1b","eu-west-1c"]}
 variable "cidr_block" { default = "10.0.0.0/16"}
 variable "overlay_block" { default = "192.168.0.0/16"}
 variable "vpc_name" { default = "Demo Docker"}

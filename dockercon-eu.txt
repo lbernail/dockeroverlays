@@ -112,6 +112,7 @@ docker exec -it demo ping 8.8.8.8
 ## DOCKER0
 docker run -d --net=none --name dhcp -v "$(pwd)/dhcp":/data networkboot/dhcpd eth0
 sudo ./plumb br42@quagga dhcp 192.168.0.254/24@192.168.0.1
+docker logs -f dhcp
 
 ## DOCKER1
 docker run -d --net=none --name=demodhcp debian sleep infinity
@@ -120,7 +121,7 @@ sudo ./plumb br42@quagga demodhcp dhcp
 # non docker
 ## GATEWAY0
 sudo ./setup_vxlan 42 host dstport 4789 nolearning
-sudo ip addr add dev br42 192.168.0.100/24
+sudo dhclient br42
 ping 192.168.0.10
 
 

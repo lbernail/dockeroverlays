@@ -15,7 +15,7 @@ resource "aws_subnet" "demo" {
   vpc_id     = "${aws_vpc.main.id}"
   cidr_block = "${cidrsubnet(var.cidr_block, 8, count.index)}"
 
-  availability_zone       = "${var.az}"
+  availability_zone       = "${var.az[count.index]}"
   map_public_ip_on_launch = "true"
 
   tags {

@@ -6,6 +6,8 @@ echo ${TF_HOSTNAME} > /etc/hostname
 echo "${TF_HOST_IP} ${TF_HOSTNAME}" >> /etc/hosts
 hostname ${TF_HOSTNAME}
 
+echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
+
 echo "Installing dependencies..."
 apt-get update
 apt-get install -y apt-transport-https ca-certificates tcpdump ethtool vim curl python-pip jq unzip iputils-arping bridge-utils

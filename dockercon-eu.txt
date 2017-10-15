@@ -1,6 +1,6 @@
 # Manual overlay
 ## BOTH
-sudo ./setup_vxlan 42 overns proxy dstport 4789
+sudo ./setup_vxlan 42 overns proxy dstport 4789 nolearning
 
 # Move interfaces to containers
 # Create containers
@@ -24,24 +24,24 @@ sudo ip netns exec overns ip neighbor show
 
 ## DOCKER0
 sudo ip netns exec overns ip neighbor add 192.168.0.20 lladdr 02:42:c0:a8:00:20 dev vxlan42
-sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:20 dev vxlan42 self dst 10.0.1.10 vni 42 port 4789
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:20 dev vxlan42 self dst 10.0.1.10 vni 42 port 4789 nolearning
 
 ## DOCKER1
 sudo ip netns exec overns ip neighbor add 192.168.0.10 lladdr 02:42:c0:a8:00:10 dev vxlan42
-sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:10 dev vxlan42 self dst 10.0.0.10 vni 42 port 4789
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:10 dev vxlan42 self dst 10.0.0.10 vni 42 port 4789 nolearning
 
 ## DOCKER0
 docker exec -it demo ping 192.168.0.20
 
 
 ## BGP
-Clean up
+##CLEAN UP
 sudo ip netns delete overns
 docker rm -f demo
 sudo rm /var/run/netns/demo
 
 ## Start BGP
-## BOTH
+## BOTH (CLEAN UP BEFORE!!)
 docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga
 docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga:CL3.2.1_evpn
 
@@ -81,7 +81,7 @@ show evpn mac vni all
 
 ## Second overlay?
 ## BOTH
-sudo ./setup_vxlan 66 container:quagga dstport 4789
+sudo ./setup_vxlan 66 container:quagga dstport 4789 nolearning
 
 ## DOCKER0
 docker run -d --net=none --name=demo66 debian sleep infinity
@@ -131,8 +131,8 @@ sudo ip link add dev vethbr type veth peer name vethgw
 sudo ip link set dev vethbr netns quagga
 sudo ip netns exec quagga ip link set vethbr master br42
 sudo ip netns exec quagga ip link set vethbr up
-sudo ip link set dev vethgw address 02:42:c0:a8:00:01
-sudo ip addr add dev vethgw 192.168.0.1/24
+sudo ip link set dev vethgw address 02:42:c0:a8:00:05
+sudo ip addr add dev vethgw 192.168.0.5/24
 sudo ip link set vethgw up
 
 # Native access without VXLAN?

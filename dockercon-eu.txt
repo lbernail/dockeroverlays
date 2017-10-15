@@ -42,7 +42,6 @@ sudo rm /var/run/netns/demo
 
 ## Start BGP
 ## BOTH (CLEAN UP BEFORE!!)
-docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga
 docker run -t -d --privileged --name quagga -p 179:179 --hostname docker -v $(pwd)/quagga:/etc/quagga cumulusnetworks/quagga:CL3.2.1_evpn
 
 ## DOCKER0
@@ -111,7 +110,7 @@ docker exec -it demo ping 8.8.8.8
 # dhcp
 ## DOCKER0
 docker run -d --net=none --name dhcp -v "$(pwd)/dhcp":/data networkboot/dhcpd eth0
-sudo ./plumb br42@quagga dhcp 192.168.0.254/24@192.168.0.1
+sudo ./plumb br42@quagga dhcp 192.168.0.254/24
 docker logs -f dhcp
 
 ## DOCKER1
@@ -121,20 +120,30 @@ sudo ./plumb br42@quagga demodhcp dhcp
 # non docker
 ## GATEWAY0
 sudo ./setup_vxlan 42 host dstport 4789 nolearning
-sudo dhclient br42
-ping 192.168.0.10
 
 
-######
-sudo ./setup_vxlan 42 container:quagga dstport 4789 nolearning
+## Create interface and get IP from dhcp
 sudo ip link add dev vethbr type veth peer name vethgw
-sudo ip link set dev vethbr netns quagga
-sudo ip netns exec quagga ip link set vethbr master br42
-sudo ip netns exec quagga ip link set vethbr up
-sudo ip link set dev vethgw address 02:42:c0:a8:00:05
-sudo ip addr add dev vethgw 192.168.0.5/24
+sudo ip link set vethbr master br42
+sudo ip link set vethbr up
+sudo ip addr add 192.168.0.1/24 dev vethgw
 sudo ip link set vethgw up
+arping -c 1 -A -I vethgw 192.168.0.1
 
-# Native access without VXLAN?
-## Docker0
-sudo ip netns exec gateway ip route add 10.0.0.0/16 via 192.168.0.100
+sudo iptables -t nat -A POSTROUTING ! -d 10.0.0.0/16 -s 192.168.0.0/24 -o eth0 -j MASQUERADE
+
+sudo ip netns add vmns
+sudo ip link add dev vethvmbr type veth peer name vethvm
+sudo ip link set vethvmbr master br42
+sudo ip link set vethvmbr up
+sudo ip link set vethvm netns vmns
+sudo ip netns exec vmns ip link set vethvm up
+sudo ip netns exec vmns dhclient vethvm
+
+
+####
+sudo ip tuntap add dev tap0 mode tap
+sudo ip link set tap0 master br42
+sudo ip link set tap0 up
+qemu-system-i386 -hda xenial.img -nographic -m 256M -net nic -net tap,ifname=tap0,script=no,downscript=no
+

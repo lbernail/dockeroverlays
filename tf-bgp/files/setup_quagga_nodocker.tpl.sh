@@ -14,7 +14,7 @@ apt-get update
 apt-get install -y tcpdump ethtool vim curl iputils-arping bridge-utils iptables iproute libjson-c2 logrotate python python-ipaddr qemu
 
 echo "Downloading ubuntu img"
-curl -sSLo /home/${TF_USER}/xenial.img http://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-i386-disk1.img
+curl -sSLo /home/${TF_USER}/wheezy.qcow2 https://people.debian.org/~aurel32/qemu/i386/debian_wheezy_i386_standard.qcow2
 
 echo "Adding a few helpers for demo purposes"
 curl -sSL https://github.com/lbernail/dockercon2017/archive/master.tar.gz | tar -xzf - --strip-components=1 -C /home/${TF_USER}

@@ -143,7 +143,7 @@ if [ "$DHCP" = true ]; then
     ip netns exec "$GUEST_NS" dhclient "$CONTAINER_IFNAME"
 else
     ip netns exec "$GUEST_NS" ip addr add "$IPADDR" dev "$CONTAINER_IFNAME"
+    ip netns exec "$GUEST_NS" arping -c 1 -A -I "$CONTAINER_IFNAME" "$IPADDR" > /dev/null 2>&1 || true
     [ "$GATEWAY" ] && ip netns exec "$GUEST_NS" ip route add default via "$GATEWAY" dev "$CONTAINER_IFNAME"
 fi
-
 echo $GUEST_NS

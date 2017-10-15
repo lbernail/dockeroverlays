@@ -97,7 +97,8 @@ resource "aws_instance" "gateway" {
 
 data "template_file" "setup_gateway" {
     count = "${var.gateway_hosts}"
-    template     = "${file("${path.module}/files/setup_host.tpl.sh")}"
+    #template     = "${file("${path.module}/files/setup_host.tpl.sh")}"
+    template     = "${file("${path.module}/files/setup_quagga_nodocker.tpl.sh")}"
     vars {
         TF_HOSTNAME = "gateway${count.index}"
         TF_HOST_IP = "${cidrhost(aws_subnet.demo.*.cidr_block[count.index],var.gateway_hostnum)}"

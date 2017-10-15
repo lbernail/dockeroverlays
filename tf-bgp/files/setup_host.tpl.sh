@@ -7,6 +7,7 @@ echo "${TF_HOST_IP} ${TF_HOSTNAME}" >> /etc/hosts
 hostname ${TF_HOSTNAME}
 
 echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
+echo 1 > /proc/sys/net/ipv4/ip_forward
 
 echo "Installing dependencies..."
 apt-get update

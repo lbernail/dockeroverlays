@@ -62,11 +62,11 @@ show evpn mac vni all
 # Create container and attach it
 ## DOCKER0
 docker run -d --net=none --name=demo debian sleep infinity
-sudo ./plumb br42@quagga demo 192.168.0.10/24 02:42:c0:a8:00:10@192.168.0.1
+sudo ./plumb br42@quagga demo 192.168.0.10/24@192.168.0.1 02:42:c0:a8:00:10
 
 ## DOCKER1
 docker run -d --net=none --name=demo debian sleep infinity
-sudo ./plumb br42@quagga demo 192.168.0.20/24 02:42:c0:a8:00:20@192.168.0.1
+sudo ./plumb br42@quagga demo 192.168.0.20/24@192.168.0.1 02:42:c0:a8:00:20
 
 # Ping
 docker exec -it demo ping 192.168.0.20

@@ -76,6 +76,7 @@ docker exec -it quagga vtysh
 show evpn vni
 show bgp evpn route
 show evpn mac vni all
+docker exec quagga bridge fdb show br br42
 
 ## Second overlay?
 ## BOTH
@@ -121,6 +122,8 @@ sudo ip link set vethgw up
 arping -c 1 -A -I vethgw 192.168.0.1
 
 ping 192.168.0.10
+
+echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 sudo iptables -t nat -A POSTROUTING ! -d 10.0.0.0/16 -s 192.168.0.0/24 -o eth0 -j MASQUERADE
 
 ## DOCKER 1
@@ -141,9 +144,8 @@ sudo ip link set tap0 master br42
 sudo ip link set tap0 up
 
 linuxkit run qemu -mem 512M -networking tap,tap0 linuxkit/linuxkit
-
-
-qemu-system-i386 -hda wheezy.qcow2 -curses -serial mon:stdio -m 256M -net nic -net tap,ifname=tap0,script=no,downscript=no
+ctr pull docker.io/library/alpine:latest
+ctr run -t docker.io/library/alpine:latest alpine sh
 
 
 
@@ -172,5 +174,5 @@ sudo ip link set vethvm netns vmns
 sudo ip netns exec vmns ip link set vethvm up
 sudo ip netns exec vmns dhclient vethvm
 
-
+qemu-system-i386 -hda wheezy.qcow2 -curses -serial mon:stdio -m 256M -net nic -net tap,ifname=tap0,script=no,downscript=no
 

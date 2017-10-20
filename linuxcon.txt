@@ -1,0 +1,190 @@
+### Setup
+Remove everything from consul
+Remove all containers
+Remove linuxcon overlay
+Remove overns NetNS
+Restart docker (to recreate consul key tree)
+
+# Network creation
+## DOCKER0
+docker network create --driver overlay --internal --subnet 192.168.0.0/24 linuxcon
+## DOCKER1
+docker network ls
+
+# Connectivity
+## DOCKER0
+docker run -d --ip 192.168.0.100 --net linuxcon --name C0 debian sleep infinity
+
+## DOCKER1
+docker run -it --rm --net linuxcon debian 
+     > ping 192.168.0.100
+docker1: ping 192.168.0.100
+
+** back to slides **
+
+# Container network config
+## DOCKER0
+docker exec C0 ip addr show
+docker exec C0 ip -details link show dev eth0
+
+** back to slides **
+
+# eth0
+## DOCKER0
+ip link show
+sudo ls -l /var/run/docker/netns
+docker network inspect linuxcon -f {{.Id}}
+overns=/var/run/docker/netns/1-8b03c2bb53
+sudo nsenter --net=$overns ip -d link show
+
+** back to slides **
+
+# VXLAN traffic
+## DOCKER0
+sudo tcpdump -nn -i eth0 "port 4789"
+## DOCKER1
+docker run -it --rm --net linuxcon debian ping 192.168.0.100
+
+** back to slides **
+
+# L2 and L3 tables
+## DOCKER0
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show
+
+
+## DOCKER1
+docker run -d --ip 192.168.0.200 --net linuxcon --name C1 debian sleep infinity
+
+## DOCKER0
+sudo nsenter --net=$overns ip neighbor show
+sudo nsenter --net=$overns bridge fdb show
+
+** back to slides **
+
+# Consul
+net=$(docker network inspect linuxcon -f {{.Id}})
+curl -s http://consul:8500/v1/kv/docker/network/v1.0/network/${net}/ | jq  -r ".[0].Value"  |  base64 -d | jq .
+
+python/dump_endpoints.py
+
+# SERF
+## DOCKER0
+serf agent -bind 0.0.0.0:17946 -join 10.0.0.10:7946 -node demo -log-level=debug -event-handler=./serf.sh
+
+## DOCKER1
+docker run -d --net linuxcon debian sleep infinity
+docker rm -f $(docker ps -aq)
+
+
+** back to slides **
+
+#### From scratch
+# Clean up
+
+## DOCKER0
+docker rm -f $(docker ps -aq)
+docker network rm linuxcon
+
+## DOCKER1
+docker rm -f $(docker ps -aq)
+
+** back to slides **
+# Create Overlay namespace
+## BOTH
+sudo ./setup_vxlan 42 overns proxy dstport 4789
+
+
+# Move interfaces to containers
+# Create containers
+## BOTH
+docker run -d --net=none --name=demo debian sleep infinity
+
+## DOCKER0
+docker exec demo ip link show
+sudo ./plumb br42@overns demo 192.168.0.10/24 02:42:c0:a8:00:10
+docker exec demo ip link show
+docker exec demo ip addr show
+
+## DOCKER1
+sudo ./plumb br42@overns demo 192.168.0.20/24 02:42:c0:a8:00:20
+
+# Ping?
+## DOCKER0
+docker exec -it demo ping 192.168.0.20
+
+** back to slides **
+## DOCKER0
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+
+sudo ip netns exec overns ip neighbor add 192.168.0.20 lladdr 02:42:c0:a8:00:20 dev vxlan42
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:20 dev vxlan42 self dst 10.0.0.11 vni 42 port 4789
+
+## DOCKER1
+sudo ip netns exec overns ip neighbor add 192.168.0.10 lladdr 02:42:c0:a8:00:10 dev vxlan42
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:10 dev vxlan42 self dst 10.0.0.10 vni 42 port 4789
+
+## DOCKER0
+docker exec -it demo ping 192.168.0.20
+
+** back to slides **
+
+##### Dynamic #####
+## DOCKER0
+ip monitor link
+## DOCKER0-2
+sudo ip link add dev veth1 type veth peer name veth2
+sudo ip link del veth1
+
+## DOCKER0
+ip monitor route
+## DOCKER0-2
+sudo ip route add 8.8.8.8 via 10.0.0.1
+sudo ip route del 8.8.8.8 via 10.0.0.1
+
+## DOCKER0
+echo 1 | sudo tee -a /proc/sys/net/ipv4/neigh/eth0/app_solicit
+ip monitor neigh
+## DOCKER0-2
+ping 10.0.0.100
+
+## DOCKER0
+sudo ip netns delete overns
+sudo ./setup_vxlan 42 overns proxy l2miss l3miss dstport 4789
+sudo ./plumb br42@overns demo 192.168.0.10/24 02:42:c0:a8:00:10
+sudo ip netns exec overns ip neighbor show
+sudo ip netns exec overns bridge fdb show
+docker exec demo ip monitor neigh
+
+## DOCKER0-2
+docker exec -it demo ping 192.168.0.20
+
+## DOCKER0
+sudo ip netns exec overns ip monitor neigh
+
+## DOCKER0-2
+docker exec -it demo ping 192.168.0.20
+sudo ip netns exec overns ip neighbor add 192.168.0.20 lladdr 02:42:c0:a8:00:20 dev vxlan42 nud permanent
+docker exec -it demo ping 192.168.0.20
+sudo ip netns exec overns bridge fdb add 02:42:c0:a8:00:20 dev vxlan42 self dst 10.0.0.11 vni 42 port 4789
+docker exec -it demo ping 192.168.0.20
+
+
+** back to slides **
+
+## Using Consul to store Hosts, Mac address
+## DOCKER0
+sudo ip netns delete overns
+sudo ./setup_vxlan 42 overns proxy l2miss l3miss dstport 4789
+sudo ./plumb br42@overns demo 192.168.0.10/24 02:42:c0:a8:00:10
+
+curl -X PUT -d '02:42:c0:a8:00:10' http://consul:8500/v1/kv/demo/arp/192.168.0.10
+curl -X PUT -d '02:42:c0:a8:00:20' http://consul:8500/v1/kv/demo/arp/192.168.0.20
+curl -X PUT -d '10.0.0.10' http://consul:8500/v1/kv/demo/fib/02:42:c0:a8:00:10
+curl -X PUT -d '10.0.0.11' http://consul:8500/v1/kv/demo/fib/02:42:c0:a8:00:20
+
+sudo python/arpd-consul.py
+
+## DOCKER0-2
+docker exec -it demo ping 192.168.0.20
